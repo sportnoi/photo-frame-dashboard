@@ -3,7 +3,10 @@
   'use strict';
   var D = window.DATA, $ = App.$;
 
-  function img(seed, w, h) { return 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h; }
+  function img(seed, w, h) {
+    if (seed.charAt(0) === '/') return seed + '?w=' + w + '&h=' + h;
+    return 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h;
+  }
   App.img = img;
 
   // ------------------------------------------------------------ full-screen takeovers
@@ -167,7 +170,6 @@
 
   App.on('ready', function () {
     $('#demo').addEventListener('click', demoClick);
-    App.hold($('#railClock'), 700, { done: App.openDemo });
     document.addEventListener('keydown', function (e) {
       if (e.target.tagName === 'INPUT') return;
       var k = e.key.toLowerCase();
@@ -175,8 +177,8 @@
       if (k === 'a') App.setMode('ambient');
       if (k === 'n') App.setMode('night');
       if (k === 'escape') { closeDemo(); App.closeSheet(); }
-      var views = ['home', 'calendar', 'tasks', 'shopping', 'photos', 'control', 'agents'];
-      if (k >= '1' && k <= '7') App.go(views[+k - 1]);
+      var views = ['home', 'calendar', 'tasks', 'shopping', 'photos'];
+      if (k >= '1' && k <= '5') App.go(views[+k - 1]);
     });
   });
 })();

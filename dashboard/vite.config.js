@@ -9,5 +9,5 @@ export default defineConfig({
     target: 'chrome106',
     cssTarget: 'chrome61',
   },
-  server: { host: true },
+  server: { host: true, proxy: { '/api': 'http://localhost:8790' } },
 });

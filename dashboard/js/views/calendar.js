@@ -285,7 +285,10 @@
     var now = App.now();
     var st = { who: [], day: 0, time: '15:30', dur: 60, title: '' };
     var days = [0, 1, 2, 3, 4];
-    var times = [['08:00', '8 AM'], ['12:00', 'Noon'], ['15:30', '3:30 PM'], ['16:30', '4:30 PM'], ['18:00', '6 PM'], ['19:30', '7:30 PM']];
+    var times = ['08:00', '09:30', '12:00', '15:30', '17:00', '18:30'].map(function (t) {
+      var p = t.split(':');
+      return [t, App.fmt.hour(new Date(2000, 0, 1, +p[0], +p[1]))];
+    });
     var ideas = ['Soccer', 'Playdate', 'Dentist', 'Dinner out', 'Swim', 'Birthday party'];
     App.sheet(
       '<div class="sheet-pad add">' +
@@ -315,10 +318,10 @@
           if (!t) return;
           if (t.dataset.idea) { input.value = t.dataset.idea; }
           if (t.dataset.who) {
-            if (t.dataset.who === 'all') st.who = st.who.length === 4 ? [] : D.ALL.slice();
+            if (t.dataset.who === 'all') st.who = st.who.length === D.people.length ? [] : D.ALL.slice();
             else { var i = st.who.indexOf(t.dataset.who); if (i > -1) st.who.splice(i, 1); else st.who.push(t.dataset.who); }
             App.$$('[data-who]', s).forEach(function (b) {
-              b.classList.toggle('is-on', b.dataset.who === 'all' ? st.who.length === 4 : st.who.indexOf(b.dataset.who) > -1);
+              b.classList.toggle('is-on', b.dataset.who === 'all' ? st.who.length === D.people.length : st.who.indexOf(b.dataset.who) > -1);
             });
           }
           ['dayi', 'time', 'dur'].forEach(function (k) {
@@ -329,7 +332,7 @@
           });
           if (t.hasAttribute('data-save')) {
             var title = input.value.trim() || 'New event';
-            var who = st.who.length ? st.who.slice() : ['jordan'];
+            var who = st.who.length ? st.who.slice() : D.ALL.slice();
             var start = App.addDays(App.dayStart(now), st.day), p = st.time.split(':');
             start.setHours(+p[0], +p[1]);
             var e = { id: D._eid(), title: title, people: who, start: start, end: new Date(+start + st.dur * 60000) };

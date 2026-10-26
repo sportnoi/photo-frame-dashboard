@@ -1,0 +1,12 @@
+.git
+.github
+backups
+diagnostics
+docs
+scripts
+**/node_modules
+**/dist
+dashboard/data
+dashboard/kiosk
+**/.env*
+**/*.log

@@ -32,16 +32,19 @@
   App.fmt = {
     time: function (d, ampm) {
       var h = d.getHours(), m = d.getMinutes();
+      if (D.clock24) return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
       var s = (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m;
       return ampm === false ? s : s + ' ' + (h >= 12 ? 'PM' : 'AM');
     },
     // "4 PM", "3:45 PM"
     hour: function (d) {
       var h = d.getHours(), m = d.getMinutes();
+      if (D.clock24) return App.fmt.time(d);
       return (h % 12 || 12) + (m ? ':' + (m < 10 ? '0' : '') + m : '') + ' ' + (h >= 12 ? 'PM' : 'AM');
     },
-    ampm: function (d) { return d.getHours() >= 12 ? 'PM' : 'AM'; },
+    ampm: function (d) { return D.clock24 ? '' : (d.getHours() >= 12 ? 'PM' : 'AM'); },
     range: function (a, b) {
+      if (D.clock24) return App.fmt.time(a) + ' – ' + App.fmt.time(b);
       var same = App.fmt.ampm(a) === App.fmt.ampm(b);
       return (same ? App.fmt.time(a, false) : App.fmt.time(a)) + ' – ' + App.fmt.time(b);
     },
@@ -151,8 +154,8 @@
   App.hourly = function (count) {
     var W = D.weather, h = App.now().getHours(), out = [];
     for (var i = 0; i < count; i++) {
-      var x = (h + i) % 24;
-      out.push({ h: x, t: W.t[x], c: W.c[x], p: W.p[x], label: i === 0 ? 'Now' : ((x % 12 || 12) + (x >= 12 ? 'p' : 'a')) });
+      var x = W.t.length > 24 ? h + i : (h + i) % 24, hh = x % 24;
+      out.push({ h: hh, t: W.t[x], c: W.c[x], p: W.p[x], label: i === 0 ? 'Now' : (D.clock24 ? (hh < 10 ? '0' : '') + hh : ((hh % 12 || 12) + (hh >= 12 ? 'p' : 'a'))) });
     }
     return out;
   };
@@ -327,7 +330,6 @@
 
   // ------------------------------------------------------------ boot
   App.start = function () {
-    App.setTime(15, 18); // demo default: a busy weekday afternoon
     fit();
     window.addEventListener('resize', fit);
     // Switch tabs the instant a finger lands (pointerdown), not on release. Keyboard "clicks"
@@ -347,7 +349,8 @@
     setInterval(tick, 1000);
     App.emit('ready');
     refreshStale(1500);
-    setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
   };
-  document.addEventListener('DOMContentLoaded', function () { App.start(); });
+  document.addEventListener('DOMContentLoaded', function () {
+    (window.DATA_READY || Promise.resolve()).then(function () { App.start(); });
+  });
 })();
