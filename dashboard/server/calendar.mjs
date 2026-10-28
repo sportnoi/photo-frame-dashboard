@@ -61,10 +61,26 @@ async function readFeed(feed, idx) {
   }
 }
 
+// "@diana" or "@santi @vicky" in an event's title or description assigns it to those people
+// (matched on person id or first name, case-insensitive). Tags are stripped from the title.
+function tagPeople(e, people, all) {
+  const byKey = new Map();
+  for (const p of people) { byKey.set(p.id.toLowerCase(), p.id); byKey.set(String(p.name).toLowerCase(), p.id); }
+  const tagged = new Set();
+  const scan = (text) => String(text || '').replace(/(^|\s)@([\p{L}\p{N}_-]+)/gu, (m, sp, k) => {
+    const id = byKey.get(k.toLowerCase());
+    if (id) { tagged.add(id); return sp; }
+    return m;
+  });
+  const title = scan(e.title).replace(/\s{2,}/g, ' ').trim() || e.title;
+  scan(e.notes);
+  return Object.assign({}, e, { title, people: tagged.size ? [...tagged] : (e.people || all) });
+}
+
 export async function events(cfg, state) {
   const all = cfg.people.map((p) => p.id);
   const feeds = await Promise.all((cfg.calendars || []).filter((f) => f.url).map(readFeed));
-  const remote = feeds.flat().map((e) => Object.assign(e, { people: e.people || all }));
+  const remote = feeds.flat().map((e) => tagPeople(e, cfg.people, all));
   const local = state.localEvents.map((e) => Object.assign({}, e, { src: 'local' }));
   return remote.concat(local);
 }
