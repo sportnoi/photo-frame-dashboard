@@ -27,15 +27,6 @@
       }).join('') + '</div>';
   }
 
-  function presence() {
-    return D.people.map(function (p) {
-      var sub = p.status || (p.age != null ? p.age + ' yrs' : '');
-      return '<div class="h-who' + (p.home ? ' is-home' : '') + '" style="' + App.pstyle(p) + '">' +
-        App.avatar(p, 36, p.home ? '' : 'avatar--away') +
-        '<span><b>' + p.name + '</b><small>' + sub + '</small></span></div>';
-    }).join('');
-  }
-
   function hero() {
     var e = App.nextEvent(), now = App.now();
     if (!e) {
@@ -63,7 +54,7 @@
     return '<button class="h-hero" style="' + App.pstyle(p) + '" data-ev="' + e.id + '">' +
       '<div class="h-hero-main">' +
       '  <div class="label label--on">Next up · ' + App.esc(whoText) + '</div>' +
-      '  <div class="h-hero-title serif">' + App.esc(e.title) + '</div>' +
+      '  <div class="h-hero-title serif' + (e.title.length > 40 ? ' is-long' : e.title.length > 24 ? ' is-mid' : '') + '">' + App.esc(e.title) + '</div>' +
       '  <div class="h-hero-meta">' + App.fmt.range(e.start, e.end) + (e.loc ? ' · ' + App.esc(e.loc) : '') + '</div>' +
       '  <div class="h-hero-foot">' + (e.people.length > 1 ? App.dots(e.people, 22) : '') + leavePill + '</div>' +
       '</div>' + big + '</button>';
@@ -71,16 +62,26 @@
 
   function lanes() {
     var now = App.now();
-    return D.people.map(function (p) {
-      var list = App.timedOn(now, p.id).filter(function (e) { return e.end > now; });
-      var shown = list.slice(0, 3), more = list.length - shown.length;
-      return '<div class="h-lane" style="' + App.pstyle(p) + '">' +
-        '<div class="h-lane-head">' + App.avatar(p, 30) + '<b>' + p.name + '</b></div>' +
-        (list.length ? shown.map(function (e) {
+    var upcoming = App.timedOn(now).filter(function (e) { return e.end > now; });
+    var cols = [];
+    // Events shared by two or more people sit once in a "Together" lane instead of repeating per person.
+    var shared = upcoming.filter(function (e) { return e.people.length > 1; });
+    if (shared.length) cols.push({ p: D.family, name: 'Together', list: shared, together: true });
+    D.people.forEach(function (p) {
+      cols.push({ p: p, name: p.name, list: upcoming.filter(function (e) { return e.people.length === 1 && e.people[0] === p.id; }) });
+    });
+    V.el.querySelector('.h-lanes').style.gridTemplateColumns = 'repeat(' + cols.length + ', minmax(0, 1fr))';
+    return cols.map(function (c) {
+      var shown = c.list.slice(0, 3), more = c.list.length - shown.length;
+      return '<div class="h-lane" style="' + App.pstyle(c.p) + '">' +
+        '<div class="h-lane-head">' + App.avatar(c.p, 30) + '<b>' + App.esc(c.name) + '</b></div>' +
+        (c.list.length ? shown.map(function (e) {
           var cur = e.start <= now;
           return '<button class="h-ev' + (cur ? ' is-now' : '') + '" data-ev="' + e.id + '">' +
             '<span class="h-ev-t">' + (cur ? 'Now' : App.fmt.time(e.start, false)) + '</span>' +
-            '<span class="h-ev-n">' + App.esc(e.title) + '</span></button>';
+            '<span class="h-ev-n">' + App.esc(e.title) + '</span>' +
+            (c.together ? '<span class="h-ev-w">' + App.dots(e.people, 12) + e.people.map(function (id) { return App.esc(App.person(id).name); }).join(' + ') + '</span>' : '') +
+            '</button>';
         }).join('') : '<div class="h-free serif"><i>Free</i> the rest of the day</div>') +
         (more > 0 ? '<button class="h-more" data-go="calendar">+' + more + ' more</button>' : '') +
         '</div>';
@@ -103,7 +104,7 @@
       if (!list.length) return '';
       var done = list.filter(function (c) { return c.done; }).length;
       var p = App.person(id);
-      return '<div class="h-ring' + (done === list.length ? ' is-done' : '') + '" style="' + App.pstyle(p) + '">' + ring(done, list.length, 64) +
+      return '<div class="h-ring' + (done === list.length ? ' is-done' : '') + '" style="' + App.pstyle(p) + '">' + ring(done, list.length, 48) +
         '<b class="num">' + (done === list.length ? '✓' : done + '/' + list.length) + '</b><span>' + (id === 'any' ? 'Anyone' : p.name) + '</span></div>';
     }).join('') + '</div>';
   }
@@ -130,7 +131,6 @@
     var el = V.el;
     el.querySelector('.h-clock').innerHTML = clock();
     el.querySelector('.h-weather').innerHTML = weather();
-    el.querySelector('.h-presence').innerHTML = presence();
     el.querySelector('.h-hero-slot').innerHTML = hero();
     el.querySelector('.h-lanes').innerHTML = lanes();
     el.querySelector('.h-chores').innerHTML = chores();
@@ -150,12 +150,12 @@
         el.innerHTML = '<div class="home">' +
           '<div class="h-clock" data-go="calendar"></div>' +
           '<div class="h-weather"></div>' +
-          '<div class="h-presence"></div>' +
-          '<div class="h-main"><div class="h-hero-slot"></div><div class="h-lanes" ></div></div>' +
+          '<div class="h-status"></div>' +
+          '<div class="h-hero-slot"></div>' +
+          '<div class="h-lanes"></div>' +
           '<div class="h-side">' +
           '  <button class="h-photo" data-go="photos"><div class="h-photo-stage"></div><div class="h-photo-cap"></div></button>' +
-          '  <button class="h-chores card" data-go="tasks"></button>' +
-          '  <div class="h-duo"><button class="h-shop card" data-go="shopping"></button><div class="h-status card"></div></div>' +
+          '  <div class="h-duo"><button class="h-chores card" data-go="tasks"></button><button class="h-shop card" data-go="shopping"></button></div>' +
           '</div></div>';
         el.addEventListener('click', function (e) {
           var ev = e.target.closest('[data-ev]');
