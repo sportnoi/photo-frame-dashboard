@@ -72,7 +72,9 @@ function tagPeople(e, people, all) {
     if (id) { tagged.add(id); return sp; }
     return m;
   });
-  const title = scan(e.title).replace(/\s{2,}/g, ' ').trim() || e.title;
+  // Removing a tag can leave a dangling separator ("@diana - Dentist" -> "- Dentist"); tidy it up.
+  const scanned = scan(e.title).replace(/\s{2,}/g, ' ').trim();
+  const title = (tagged.size ? scanned.replace(/^[\s\-–—:,;|]+|[\s\-–—:,;|]+$/g, '') : scanned) || e.title;
   scan(e.notes);
   return Object.assign({}, e, { title, people: tagged.size ? [...tagged] : (e.people || all) });
 }
