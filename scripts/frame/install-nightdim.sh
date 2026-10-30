@@ -10,4 +10,5 @@ if [ "${1:-}" = "--remove" ]; then
 fi
 adb push scripts/frame/60nightdim /sdcard/60nightdim
 adb shell "su -c 'mount -o remount,rw /system && cp /sdcard/60nightdim /system/su.d/60nightdim && chmod 700 /system/su.d/60nightdim && chown root:root /system/su.d/60nightdim && chcon u:object_r:system_file:s0 /system/su.d/60nightdim; grep -q 60nightdim /system/bin/install-recovery.sh || echo \"[ -x /system/su.d/60nightdim ] && /system/su.d/60nightdim\" >> /system/bin/install-recovery.sh; mount -o remount,ro /system; ls -lZ /system/su.d; cat /system/bin/install-recovery.sh'"
-echo "installed; run it now with:  adb shell su -c /system/su.d/60nightdim   (or reboot the frame)"
+adb shell "su -c 'rmdir /dev/nightdim.lock 2>/dev/null; /system/su.d/60nightdim'"
+echo "installed and started"
