@@ -1,0 +1,18 @@
+#!/system/bin/sh
+# Night dimming for the family-dashboard frame: 10% brightness 22:00-07:00, normal level otherwise.
+# Wakes at the top of each hour and only changes the setting when day/night flips.
+# Started at boot from install-recovery.sh (and from su.d if SuperSU runs it); the lock keeps it to one loop.
+mkdir /dev/nightdim.lock 2>/dev/null || exit 0
+DAY=217
+NIGHT=26
+(
+  while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 5; done
+  last=
+  while true; do
+    h=$(date +%H); h=${h#0}; h=${h:-0}
+    if [ "$h" -ge 22 ] || [ "$h" -lt 7 ]; then mode=night; level=$NIGHT; else mode=day; level=$DAY; fi
+    if [ "$mode" != "$last" ]; then settings put system screen_brightness $level; last=$mode; fi
+    m=$(date +%M); m=${m#0}; s=$(date +%S); s=${s#0}
+    sleep $((3600 - ${m:-0} * 60 - ${s:-0} + 2))
+  done
+) >/dev/null 2>&1 &
