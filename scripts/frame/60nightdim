@@ -13,11 +13,22 @@ if [ "$1" != run ]; then
 fi
 
 while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 5; done
+sleep 20
+
+# "settings put" can fail quietly while Android is still starting, so check it took and retry.
+apply() {
+  n=0
+  while [ $n -lt 12 ]; do
+    settings put system screen_brightness $1 >/dev/null 2>&1
+    [ "$(settings get system screen_brightness 2>/dev/null)" = "$1" ] && return 0
+    n=$((n + 1)); sleep 10
+  done
+}
 last=
 while true; do
   h=$(date +%H); h=${h#0}; h=${h:-0}
   if [ "$h" -ge 22 ] || [ "$h" -lt 7 ]; then mode=night; level=$NIGHT; else mode=day; level=$DAY; fi
-  if [ "$mode" != "$last" ]; then settings put system screen_brightness $level; last=$mode; fi
+  if [ "$mode" != "$last" ]; then apply $level; last=$mode; fi
   m=$(date +%M); m=${m#0}; s=$(date +%S); s=${s#0}
   sleep $((3600 - ${m:-0} * 60 - ${s:-0} + 2))
 done
