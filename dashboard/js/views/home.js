@@ -140,7 +140,7 @@
 
   function photoCaption(s) {
     var m = App.photoMeta(s.photos[0]);
-    V.el.querySelector('.h-photo-cap').innerHTML = '<b>' + (m.onThisDay ? 'On this day · ' : '') + m.kicker + '</b><span>' + App.esc(m.place) + '</span>';
+    V.el.querySelector('.h-photo-cap').innerHTML = '<b>' + (m.onThisDay ? 'On this day · ' : '') + m.kicker + '</b><span>' + App.esc(m.place || m.date) + '</span>';
   }
 
   App.register('home', {

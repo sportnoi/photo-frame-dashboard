@@ -14,8 +14,14 @@
   App.photoMeta = function (p) {
     var d = parseDate(p), now = App.now();
     var years = now.getFullYear() - d.getFullYear();
-    var onThisDay = d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-    var kicker = onThisDay ? years + (years === 1 ? ' year' : ' years') + ' ago today' : (years > 0 ? years + (years === 1 ? ' year ago' : ' years ago') : 'This year');
+    var onThisDay = years > 0 && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    var days = Math.floor((App.dayStart(now) - App.dayStart(d)) / 864e5);
+    var months = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth() - (now.getDate() < d.getDate() ? 1 : 0);
+    function n(v, u) { return v + ' ' + u + (v === 1 ? '' : 's') + ' ago'; }
+    var kicker = onThisDay ? years + (years === 1 ? ' year' : ' years') + ' ago today'
+      : days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 14 ? n(days, 'day')
+      : months < 1 ? n(Math.floor(days / 7), 'week') : months < 12 ? n(months, 'month')
+      : months % 12 && months < 36 ? Math.floor(months / 12) + 'y ' + (months % 12) + 'm ago' : n(Math.floor(months / 12), 'year');
     return {
       date: App.fmt.month(d) + ' ' + d.getDate() + ', ' + d.getFullYear(),
       monthYear: App.fmt.month(d) + ' ' + d.getFullYear(),
@@ -31,7 +37,7 @@
   function caption(ps, size) {
     var m = App.photoMeta(ps[0]);
     return '<div class="cap cap--' + (size || 'l') + '">' +
-      '<div class="cap-kicker">' + (m.onThisDay ? '<b>On this day</b> · ' : '') + m.kicker + ' · ' + App.esc(m.place) + '</div>' +
+      '<div class="cap-kicker">' + (m.onThisDay ? '<b>On this day</b> · ' : '') + m.kicker + (m.place ? ' · ' + App.esc(m.place) : '') + '</div>' +
       '<div class="cap-date serif">' + (ps.length > 1 ? m.monthYear : m.date) + '</div>' +
       '</div>';
   }
@@ -59,7 +65,7 @@
       var p = ps[0], m = App.photoMeta(p), rot = (Math.random() * 5 - 2.5).toFixed(1);
       return '<div class="slide slide--polaroid"><img class="blurfill" src="' + src(p) + '" alt="">' +
         '<figure class="polaroid polaroid--' + p.o + '" style="transform:rotate(' + rot + 'deg)"><div class="polaroid-img"><img src="' + src(p, true) + '" alt=""></div>' +
-        '<figcaption class="serif"><i>' + App.esc(m.place) + ', ' + m.monthYear + '</i></figcaption></figure></div>';
+        '<figcaption class="serif"><i>' + (m.place ? App.esc(m.place) + ', ' : '') + m.monthYear + '</i></figcaption></figure></div>';
     }
   };
 

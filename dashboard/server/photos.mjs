@@ -31,20 +31,24 @@ async function describe(file) {
   const st = fs.statSync(file);
   const rel = path.relative(PHOTOS_DIR, file);
   const m = meta[rel];
-  if (m && m.mtime === st.mtimeMs) return m;
-  let o = 'l', date = new Date(st.mtimeMs);
+  if (m && m.mtime === st.mtimeMs && m.v === 2) return m;
+  let o = 'l', date = new Date(st.mtimeMs), exifDate = false;
   try {
     const md = await sharp(file).metadata();
     const rotated = md.orientation >= 5;
     const w = rotated ? md.height : md.width, h = rotated ? md.width : md.height;
     o = h > w ? 'p' : 'l';
     const ex = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']).catch(() => null);
-    if (ex && (ex.DateTimeOriginal || ex.CreateDate)) date = new Date(ex.DateTimeOriginal || ex.CreateDate);
+    if (ex && (ex.DateTimeOriginal || ex.CreateDate)) { date = new Date(ex.DateTimeOriginal || ex.CreateDate); exifDate = true; }
   } catch (e) {
     console.error('photo', rel, e.message);
     return null;
   }
-  meta[rel] = { mtime: st.mtimeMs, o, date: date.toISOString().slice(0, 10) };
+  // No EXIF date: use a date in the file name ("2024-08-19 10.20.30.jpg"), else the file's mtime.
+  if (!exifDate) { const fn = path.basename(file).match(/(\d{4})-(\d{2})-(\d{2})/); if (fn && +fn[1] > 1990) date = new Date(+fn[1], +fn[2] - 1, +fn[3]); }
+  // Local calendar date (toISOString would shift it back a day in the family's timezone).
+  const pad = (n) => String(n).padStart(2, '0');
+  meta[rel] = { v: 2, mtime: st.mtimeMs, o, date: date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) };
   return meta[rel];
 }
 
