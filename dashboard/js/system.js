@@ -4,7 +4,7 @@
   var D = window.DATA, $ = App.$;
 
   function img(seed, w, h) {
-    if (seed.charAt(0) === '/') return seed + '?w=' + w + '&h=' + h;
+    if (seed.charAt(0) === '/') return seed + '?w=' + w + '&h=' + h + '&v=2'; // v: uncropped resize (busts week-long cache)
     return 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h;
   }
   App.img = img;

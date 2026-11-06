@@ -77,9 +77,10 @@ export async function photoFile(id, w, h) {
   w = Math.min(Math.max(+w || 1280, 64), 1600);
   h = Math.min(Math.max(+h || 800, 64), 1600);
   fs.mkdirSync(CACHE_DIR, { recursive: true });
-  const out = path.join(CACHE_DIR, id + '-' + w + 'x' + h + '.jpg');
+  // Shrink to fit inside w×h without cropping; the client decides how to frame it on screen.
+  const out = path.join(CACHE_DIR, id + '-' + w + 'x' + h + '-in.jpg');
   if (!fs.existsSync(out)) {
-    await sharp(file).rotate().resize(w, h, { fit: 'cover', position: sharp.strategy.attention }).jpeg({ quality: 82, mozjpeg: true }).toFile(out);
+    await sharp(file).rotate().resize(w, h, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toFile(out);
   }
   return out;
 }

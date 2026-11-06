@@ -41,29 +41,36 @@
       '<div class="cap-date serif">' + (ps.length > 1 ? m.monthYear : m.date) + '</div>' +
       '</div>';
   }
-  function kb(p, still) {
-    var dx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2.5) + '%';
-    var dy = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5) + '%';
-    return '<div class="kb' + (still ? ' kb--still' : '') + '" style="--dx:' + dx + ';--dy:' + dy + '"><img src="' + src(p, true) + '" alt=""></div>';
+  // One photo filling its box. If the photo's shape is close to the box it fills it (cover);
+  // otherwise it is shown whole (contain) over a soft fill made from a tiny copy of itself,
+  // so nobody gets cropped out. (A 64px image upscaled is a free "blur" on the frame's GPU.)
+  function kb(p) {
+    return '<div class="kb"><img class="kb-fill" data-src="' + App.img(p.seed, 64, 64) + '" alt=""><img class="kb-img" src="' + src(p, true) + '" alt=""></div>';
+  }
+  var MAX_CROP = 1.12; // crop at most ~11% of the photo before switching to show-it-whole
+  function frame(im) {
+    var box = im.parentNode, bw = box.clientWidth, bh = box.clientHeight;
+    if (!im.naturalWidth || !bw || !bh) return; // not loaded or not visible yet; refit() retries
+    var r = (im.naturalWidth / im.naturalHeight) / (bw / bh);
+    var whole = Math.max(r, 1 / r) > MAX_CROP;
+    box.classList.toggle('is-whole', whole);
+    var fill = box.querySelector('.kb-fill');
+    if (whole && fill && !fill.getAttribute('src')) fill.src = fill.getAttribute('data-src');
   }
 
   var BUILD = {
     cover: function (ps, o) {
-      var p = ps[0];
-      if (p.o === 'p') {
-        return '<div class="slide slide--fit"><img class="blurfill" src="' + src(p) + '" alt=""><img class="fitimg" src="' + src(p, true) + '" alt="">' + (o.captions ? caption(ps) : '') + '</div>';
-      }
-      return '<div class="slide slide--cover">' + kb(p) + (o.captions ? caption(ps) : '') + '</div>';
+      return '<div class="slide slide--cover">' + kb(ps[0]) + (o.captions ? caption(ps) : '') + '</div>';
     },
     pair: function (ps, o) {
-      return '<div class="slide slide--pair"><div class="pane">' + kb(ps[0], true) + '</div><div class="pane">' + kb(ps[1], true) + '</div>' + (o.captions ? caption(ps, 'm') : '') + '</div>';
+      return '<div class="slide slide--pair"><div class="pane">' + kb(ps[0]) + '</div><div class="pane">' + kb(ps[1]) + '</div>' + (o.captions ? caption(ps, 'm') : '') + '</div>';
     },
     collage: function (ps, o) {
-      return '<div class="slide slide--collage"><div class="pane pane--a">' + kb(ps[0], true) + '</div><div class="pane pane--b">' + kb(ps[1], true) + '</div><div class="pane pane--c">' + kb(ps[2], true) + '</div>' + (o.captions ? caption(ps, 'm') : '') + '</div>';
+      return '<div class="slide slide--collage"><div class="pane pane--a">' + kb(ps[0]) + '</div><div class="pane pane--b">' + kb(ps[1]) + '</div><div class="pane pane--c">' + kb(ps[2]) + '</div>' + (o.captions ? caption(ps, 'm') : '') + '</div>';
     },
     polaroid: function (ps) {
       var p = ps[0], m = App.photoMeta(p), rot = (Math.random() * 5 - 2.5).toFixed(1);
-      return '<div class="slide slide--polaroid"><img class="blurfill" src="' + src(p) + '" alt="">' +
+      return '<div class="slide slide--polaroid"><img class="blurfill" src="' + App.img(p.seed, 64, 64) + '" alt="">' +
         '<figure class="polaroid polaroid--' + p.o + '" style="transform:rotate(' + rot + 'deg)"><div class="polaroid-img"><img src="' + src(p, true) + '" alt=""></div>' +
         '<figcaption class="serif"><i>' + (m.place ? App.esc(m.place) + ', ' : '') + m.monthYear + '</i></figcaption></figure></div>';
     }
@@ -127,9 +134,12 @@
     Array.prototype.forEach.call(node.querySelectorAll('img'), function (im) {
       im.addEventListener('error', function () { im.classList.add('is-broken'); });
     });
+    Array.prototype.forEach.call(node.querySelectorAll('.kb-img'), function (im) {
+      im.addEventListener('load', function () { frame(im); });
+    });
     var old = Array.prototype.slice.call(this.el.children);
     this.el.appendChild(node);
-    var first = node.querySelector('img:not(.blurfill)');
+    var first = node.querySelector('.kb-img, .polaroid-img img');
     var shown = false;
     function show() {
       if (shown) return; shown = true;
@@ -137,6 +147,7 @@
       node.style.opacity = '';
       old.forEach(function (o) { o.remove(); });
     }
+    this.refit();
     if (first && !first.complete) { first.addEventListener('load', show); first.addEventListener('error', show); setTimeout(show, 2500); }
     else show();
     if (this.o.onChange) this.o.onChange(slide);
@@ -160,6 +171,8 @@
     clearInterval(this.timer);
     this.timer = setInterval(function () { self.next(); }, this.o.interval);
   };
-  S.start = function () { if (!this.current) this.next(); else this.restart(); };
+  // Re-frame the visible photos (they can't be measured while their view is hidden).
+  S.refit = function () { Array.prototype.forEach.call(this.el.querySelectorAll('.kb-img'), frame); };
+  S.start = function () { if (!this.current) this.next(); else { this.refit(); this.restart(); } };
   S.stop = function () { clearInterval(this.timer); this.timer = null; };
 })();
