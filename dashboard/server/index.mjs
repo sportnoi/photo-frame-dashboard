@@ -6,6 +6,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, PORT, PHOTOS_DIR } from './config.mjs';
 import * as store from './store.mjs';
@@ -17,6 +18,10 @@ const cfg = loadConfig();
 process.env.TZ = cfg.timezone; // all-day iCal dates and chore resets use the family's timezone
 const state = store.load(cfg);
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
+// Changes whenever a new build ships (index.html names the content-hashed assets); the frame
+// reloads itself when it sees a different one, so releases need no kiosk restart.
+let BUILD = '';
+try { BUILD = crypto.createHash('sha1').update(fs.readFileSync(path.join(DIST, 'index.html'))).digest('hex').slice(0, 12); } catch (e) { /* not built */ }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png',
   '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
@@ -43,6 +48,7 @@ async function getState() {
   store.rollChores(cfg.timezone);
   const [ev, wx, ph] = await Promise.all([events(cfg, state), weather(cfg), photos()]);
   return {
+    build: BUILD,
     clock24: cfg.clock24,
     people: cfg.people,
     family: { id: 'family', name: 'Family', color: '#111111', rgb: '17 17 17', ink: '#FFFFFF' },

@@ -6,6 +6,7 @@
   var REFRESH_MS = 3 * 60 * 1000;
   var applying = false;
   var pending = null, timer = null;
+  var build = null; // server build this page was loaded from
 
   // The mock's counters restart on every load, which would collide with saved items.
   function uid(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -56,7 +57,7 @@
   // Start-up: wait for real data (retrying), so the dashboard never shows the demo family.
   window.DATA_READY = new Promise(function (resolve) {
     (function attempt() {
-      get().then(function (s) { apply(s, true); resolve(); }).catch(function (e) {
+      get().then(function (s) { build = s.build; apply(s, true); resolve(); }).catch(function (e) {
         console.error('[api] load failed, retrying', e);
         setTimeout(attempt, 5000);
       });
@@ -92,7 +93,15 @@
     setInterval(function () {
       // Don't yank the page out from under someone mid-edit.
       if (document.querySelector('#sheetLayer.is-open')) return;
-      get().then(function (s) { apply(s, false); }).catch(function (e) { console.error('[api] refresh failed', e); });
+      get().then(function (s) {
+        // A new release is running on the server: reload to pick it up (unsaved edits go first).
+        if (s.build && build && s.build !== build) {
+          if (pending) flush();
+          else location.reload();
+          return;
+        }
+        apply(s, false);
+      }).catch(function (e) { console.error('[api] refresh failed', e); });
     }, REFRESH_MS);
   });
 })();
